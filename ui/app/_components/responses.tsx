@@ -47,8 +47,8 @@ export function Responses() {
       </form>
       <StickToBottom className="relative flex-1 overflow-y-hidden">
         <StickToBottom.Content className="flex flex-col gap-4 p-4">
-          {responses?.map((response) => (
-            <Tool key={response.id}>
+          {responses?.map((response, i) => (
+            <Tool key={response.id} defaultOpen={i == responses.length - 1}>
               <ToolHeader
                 title={response.command}
                 type={`tool-${response.command}`}
