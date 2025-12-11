@@ -52,12 +52,12 @@ export function Responses() {
               <ToolHeader
                 title={response.command}
                 type={`tool-${response.command}`}
-                state={"output-available"}
+                state={response.stderr.trim().length > 0 ? "output-error" : "output-available"}
               />
               <ToolContent>
                 <ToolOutput
                   output={response.stdout}
-                  errorText={!!response.stderr ? response.stderr : undefined}
+                  errorText={response.stderr.trim().length > 0 ? response.stderr : undefined}
                 />
               </ToolContent>
             </Tool>
