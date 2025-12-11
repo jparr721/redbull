@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { DataTable } from "@/components/data-table";
-import { getResponses, ResponseSchema } from "@/queries/responses.query";
+import { getResponses } from "@/queries/responses.query";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
-import { createColumnsFromSchema } from '../../lib/table-utils';
+import { StickToBottom } from "use-stick-to-bottom";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
 
 export function Responses() {
   const [command, setCommand] = useState("");
@@ -31,7 +36,7 @@ export function Responses() {
   if (isLoading) return <h1>Loading</h1>;
 
   return (
-    <div>
+    <div className="flex flex-col">
       <form onSubmit={handleSubmit} className="mb-4">
         <Input
           value={command}
@@ -40,7 +45,25 @@ export function Responses() {
           className="w-full"
         />
       </form>
-      {!(!responses || responses.length === 0) && <DataTable data={responses} columns={createColumnsFromSchema(ResponseSchema)} />}
+      <StickToBottom className="relative flex-1 overflow-y-hidden">
+        <StickToBottom.Content className="flex flex-col gap-4 p-4">
+          {responses?.map((response) => (
+            <Tool key={response.id} defaultOpen>
+              <ToolHeader
+                title={response.command}
+                type={`tool-${response.command}`}
+                state={"output-available"}
+              />
+              <ToolContent>
+                <ToolOutput
+                  output={response.stdout}
+                  errorText={!!response.stderr ? response.stderr : undefined}
+                />
+              </ToolContent>
+            </Tool>
+          ))}
+        </StickToBottom.Content>
+      </StickToBottom>
     </div>
   );
 }

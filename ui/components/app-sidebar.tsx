@@ -1,11 +1,11 @@
 import * as React from "react"
+import { Activity, Home } from "lucide-react"
 
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -17,19 +17,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        Who needs sleep when you have RED. BULL.
+        <div className="flex items-center gap-2 px-2 py-1">
+          <Activity className="h-5 w-5 text-red-500" />
+          <span className="font-bold tracking-tight">RED BULL</span>
+        </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarMenuButton asChild>
-          <a href="/">Home</a>
-        </SidebarMenuButton>
         <SidebarGroup>
-          <SidebarGroupLabel>C2</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/beacon">Beacon</a>
+                  <a href="/">
+                    <Home className="h-4 w-4" />
+                    <span>Home</span>
+                  </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

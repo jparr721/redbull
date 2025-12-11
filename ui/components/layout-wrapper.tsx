@@ -5,13 +5,10 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList } from "./ui/breadcrumb";
 import { Separator } from "./ui/separator";
-import { QueryClient } from "@tanstack/react-query";
 
 interface Props {
   children: ReactNode;
 }
-
-const queryClient = new QueryClient();
 
 export function LayoutWrapper({ children }: Props) {
   return (
@@ -28,17 +25,15 @@ export function LayoutWrapper({ children }: Props) {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="#">
-                Home
+                  Home
                 </BreadcrumbLink>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </header>
         <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 p-4">
-              {children}
-            </div>
+          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 p-4">
+            {children}
           </div>
         </div>
       </SidebarInset>

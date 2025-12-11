@@ -20,6 +20,9 @@ var PASSWORD = "foobar"
 var UPSTREAM = "http://localhost:8000"
 var PAC_URL = ""
 
+var COMMAND_MAP = map[string]func(cmd string) error{
+}
+
 func runBashWithTimeout(command string, timeout time.Duration) (stdout string, stderr string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -67,7 +70,6 @@ func main() {
 				}
 
 				command := string(decoded)
-				fmt.Println("executing command", command)
 				stdout, stderr, err := runBashWithTimeout(command, 100 * time.Second)
 				if err != nil {
 					continue
