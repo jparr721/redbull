@@ -31,8 +31,8 @@ export function LayoutWrapper({ children }: Props) {
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="flex flex-1 flex-col">
-          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 p-4">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 p-4 h-full overflow-hidden">
             {children}
           </div>
         </div>
