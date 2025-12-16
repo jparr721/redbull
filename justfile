@@ -1,3 +1,5 @@
+set windows-powershell
+
 server:
   go run cmd/server/main.go
 
