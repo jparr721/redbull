@@ -9,5 +9,5 @@ build:
   go build -o bin/server ./cmd/server/main.go
 
 build-macos $GOOS="darwin" $GOARCH="amd64":
-  go build -o bin/beacon ./cmd/beacon/main.go
-  go build -o bin/server ./cmd/server/main.go
+  go build -o bin/beaconMacOS ./cmd/beacon/main.go
+  go build -o bin/serverMacOS ./cmd/server/main.go
