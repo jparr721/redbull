@@ -2,7 +2,7 @@ package rbhttp
 
 import (
 	"encoding/base64"
-	"io"
+	"encoding/json"
 	"net/http"
 	"sync"
 	"time"
@@ -10,20 +10,51 @@ import (
 	"github.com/google/uuid"
 )
 
-func ReadPlaintextBody(r *http.Request) (string, error) {
+type HttpBody struct {
+	Command string `json:"command"`
+	Stdout  string `json:"stdout"`
+	Stderr  string `json:"stderr"`
+}
+
+type CheckInResponse struct {
+	Command string `json:"command"`
+}
+
+type NewCommandResponse struct {
+	Success bool `json:"success"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+type NewCommandRequest struct {
+	Command string `json:"command"`
+}
+
+func (n *NewCommandRequest) Bind(r *http.Request) error {
+	return nil
+}
+
+func (h *HttpBody) Bind(r *http.Request) error {
+	return nil
+}
+
+// EncodeCommand encodes a command string as base64 for transport to the beacon.
+func EncodeCommand(cmd string) string {
+	return base64.StdEncoding.EncodeToString([]byte(cmd))
+}
+
+// ReadJsonBody decodes a JSON HttpBody from the request.
+func ReadJsonBody(r *http.Request) (HttpBody, error) {
 	defer r.Body.Close()
 
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		return "", err
+	var body HttpBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return HttpBody{}, err
 	}
 
-	decoded, err := base64.StdEncoding.DecodeString(string(bodyBytes))
-	if err != nil {
-		return "", err
-	}
-
-	return string(decoded), nil
+	return body, nil
 }
 
 type BeaconResponse struct {

