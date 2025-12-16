@@ -49,7 +49,7 @@ func response(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responses.Append(*rbhttp.NewBeaconResponse(httpBody.Command, httpBody.Stdout, httpBody.Stderr))
+	responses.Append(*rbhttp.NewBeaconResponse(httpBody.Command, httpBody.Stdout, httpBody.Stderr, httpBody.CurrentDirectory))
 	render.Status(r, 204)
 	render.NoContent(w, r)
 }

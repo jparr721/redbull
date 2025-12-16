@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getResponses } from "@/queries/responses.query";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,6 @@ import {
 
 export function Responses() {
   const [command, setCommand] = useState("");
-  const [currentDirectory, setCurrentDirectory] = useState("");
 
   const { data: responses, isLoading } = useQuery({
     queryKey: ["responses"],
@@ -27,12 +26,17 @@ export function Responses() {
     mutationFn: (cmd: string) => axios.post("http://localhost:8000/command", { command: cmd }),
   });
 
+  const currentDirectory = useMemo(() => {
+    return responses?.at(responses.length - 1)?.currentDirectory ?? "";
+  }, [responses]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!command.trim()) return;
     mutation.mutate(command);
     setCommand("");
   };
+
 
   if (isLoading) return <h1>Loading</h1>;
 
@@ -52,6 +56,26 @@ export function Responses() {
                   output={response.stdout}
                   errorText={response.stderr.trim().length > 0 ? response.stderr : undefined}
                 />
+                <div className="flex flex-wrap gap-3 px-4 py-3 border-t border-border bg-muted/30">
+                  {response.currentDirectory && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-muted-foreground">Directory:</span>
+                      <span className="font-mono text-foreground">{response.currentDirectory}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-muted-foreground">Executed:</span>
+                    <span className="text-foreground">
+                      {new Date(response.time).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
               </ToolContent>
             </Tool>
           ))}

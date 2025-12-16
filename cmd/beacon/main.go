@@ -171,16 +171,19 @@ func main() {
 
 func sendResult(httpClient rbhttp.HttpClient, command, stdout, stderr string) {
 	result := rbhttp.HttpBody{
-		Command: command,
-		Stdout:  stdout,
-		Stderr:  stderr,
+		Command:          command,
+		Stdout:           stdout,
+		Stderr:           stderr,
+		CurrentDirectory: CWD,
 	}
+
 	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		result = rbhttp.HttpBody{
-			Command: command,
-			Stdout:  "error: failed to marshal response",
-			Stderr:  fmt.Sprintf("error: %s", err.Error()),
+			Command:          command,
+			Stdout:           "error: failed to marshal response",
+			Stderr:           fmt.Sprintf("error: %s", err.Error()),
+			CurrentDirectory: CWD,
 		}
 		jsonBytes, err = json.Marshal(result)
 		if err != nil {

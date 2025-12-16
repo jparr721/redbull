@@ -11,9 +11,10 @@ import (
 )
 
 type HttpBody struct {
-	Command string `json:"command"`
-	Stdout  string `json:"stdout"`
-	Stderr  string `json:"stderr"`
+	Command          string `json:"command"`
+	Stdout           string `json:"stdout"`
+	Stderr           string `json:"stderr"`
+	CurrentDirectory string `json:"currentDirectory"`
 }
 
 type CheckInResponse struct {
@@ -58,20 +59,22 @@ func ReadJsonBody(r *http.Request) (HttpBody, error) {
 }
 
 type BeaconResponse struct {
-	ID      string    `json:"id"`
-	Time    time.Time `json:"time"`
-	Stdout  string    `json:"stdout"`
-	Stderr  string    `json:"stderr"`
-	Command string    `json:"command"`
+	ID               string    `json:"id"`
+	Time             time.Time `json:"time"`
+	Stdout           string    `json:"stdout"`
+	Stderr           string    `json:"stderr"`
+	Command          string    `json:"command"`
+	CurrentDirectory string    `json:"currentDirectory"`
 }
 
-func NewBeaconResponse(cmd, stdout, stderr string) *BeaconResponse {
+func NewBeaconResponse(cmd, stdout, stderr, currentDirectory string) *BeaconResponse {
 	return &BeaconResponse{
-		ID:      uuid.New().String(),
-		Time:    time.Now(),
-		Stdout:  stdout,
-		Stderr:  stderr,
-		Command: cmd,
+		ID:               uuid.New().String(),
+		Time:             time.Now(),
+		Stdout:           stdout,
+		Stderr:           stderr,
+		Command:          cmd,
+		CurrentDirectory: currentDirectory,
 	}
 }
 
