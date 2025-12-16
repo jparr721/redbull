@@ -22,7 +22,7 @@ var USERNAME = "zkokkdc"
 var PASSWORD = "foobar"
 var UPSTREAM = "http://localhost:8000"
 var PROXY_URL = "http://abproxy.bankofamerica.com:8080"
-var USE_KRB = false
+var USE_KRB = true
 var SLEEP_TIME = 1 * time.Second
 var CWD = ""
 
