@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"redbull/internal/rbhttp"
 	"redbull/internal/rbqueue"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -14,6 +16,7 @@ import (
 
 var cmdQueue = rbqueue.NewQueue[string]()
 var responses = rbhttp.NewBeaconResponses()
+var lastCheckIn time.Time
 
 func init() {
 	logger := zap.Must(zap.NewDevelopment())
@@ -25,11 +28,18 @@ func errorResponse(w http.ResponseWriter, r *http.Request, status int, msg strin
 	render.JSON(w, r, rbhttp.ErrorResponse{Error: msg})
 }
 
+func getLastCheckin(w http.ResponseWriter, r *http.Request) {
+	duration := time.Since(lastCheckIn)
+	ms := duration.Milliseconds()
+	render.JSON(w, r, rbhttp.CheckInTimeResponse{CheckInTime: fmt.Sprintf("%d", ms)})
+}
+
 func checkIn(w http.ResponseWriter, r *http.Request) {
 	cmdQueue.Lock()
 	defer cmdQueue.Unlock()
 
 	zap.L().Debug("queue", zap.Int("queue", cmdQueue.Len()), zap.Bool("empty", cmdQueue.IsEmpty()))
+	lastCheckIn = time.Now()
 	if cmdQueue.IsEmpty() {
 		render.Status(r, 204)
 		render.NoContent(w, r)
@@ -96,6 +106,7 @@ func main() {
 	r.Post("/", response)
 	r.Post("/command", newCommand)
 	r.Get("/responses", fetchResponses)
+	r.Get("/last_checkin", getLastCheckin)
 
 	zap.L().Info("Running on 0.0.0.0:8000")
 	http.ListenAndServe(":8000", r)

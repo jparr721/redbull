@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getResponses } from "@/queries/responses.query";
+import { getLastCheckInTime, getResponses } from "@/queries/responses.query";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
@@ -19,6 +19,12 @@ export function Responses() {
   const { data: responses, isLoading } = useQuery({
     queryKey: ["responses"],
     queryFn: getResponses,
+    refetchInterval: 1000,
+  });
+
+  const { data: checkInTime, isLoading: isLoadingCheckInTime } = useQuery({
+    queryKey: ["checkInTime"],
+    queryFn: getLastCheckInTime,
     refetchInterval: 1000,
   });
 
@@ -85,8 +91,21 @@ export function Responses() {
       {/* Fixed bottom input container */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-10">
         {currentDirectory && (
-          <div className="mb-2 text-sm text-muted-foreground">
-            Current directory: <span className="font-mono text-foreground">{currentDirectory}</span>
+          <div>
+            <div className="mb-2 text-sm text-muted-foreground">
+              Current directory: <span className="font-mono text-foreground">{currentDirectory}</span>
+            </div>
+            <div className="mb-2 text-sm text-muted-foreground">
+              {
+              isLoadingCheckInTime
+                ? <span className="font-mono text-foreground">Loading</span>
+                : <span>
+                    Last Checkin: <span className="font-mono text-foreground">
+                      {`${checkInTime?.checkInTime ?? "No check in yet"}ms ago`}
+                    </span>
+                  </span>
+              }
+            </div>
           </div>
         )}
         <form onSubmit={handleSubmit}>

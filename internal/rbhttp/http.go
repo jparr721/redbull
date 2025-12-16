@@ -33,6 +33,10 @@ type NewCommandRequest struct {
 	Command string `json:"command"`
 }
 
+type CheckInTimeResponse struct {
+	CheckInTime string `json:"checkInTime"`
+}
+
 func (n *NewCommandRequest) Bind(r *http.Request) error {
 	return nil
 }

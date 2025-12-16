@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
+	"path/filepath"
 	config "redbull"
 	"strings"
 	"syscall"
@@ -48,17 +48,25 @@ func getBeaconStatus(_ string) (string, string, error) {
 }
 
 func changeDirectory(command string) (string, string, error) {
-	newCwd := path.Join(CWD, command)
-	res, err := os.Stat(newCwd)
+	// Join the current directory with the command path
+	newCwd := filepath.Join(CWD, command)
+
+	// Resolve to absolute path (handles relative paths like ../..)
+	absPath, err := filepath.Abs(newCwd)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to resolve path '%s': %w", newCwd, err)
+	}
+
+	res, err := os.Stat(absPath)
 	if os.IsNotExist(err) {
-		return "", "", fmt.Errorf("invalid path '%s': path does not exist", newCwd)
+		return "", "", fmt.Errorf("invalid path '%s': path does not exist", absPath)
 	}
 
 	if !res.IsDir() {
-		return "", "", fmt.Errorf("invalid path '%s': not a directory", newCwd)
+		return "", "", fmt.Errorf("invalid path '%s': not a directory", absPath)
 	}
 
-	CWD = newCwd
+	CWD = absPath
 	return fmt.Sprintf("changed directory to %s", CWD), "", nil
 }
 
