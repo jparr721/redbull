@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { StickToBottom } from "use-stick-to-bottom";
+import { API_BASE_URL } from "@/lib/api-config";
 import {
   Tool,
   ToolContent,
@@ -29,7 +30,7 @@ export function Responses() {
   });
 
   const mutation = useMutation({
-    mutationFn: (cmd: string) => axios.post("http://localhost:8000/command", { command: cmd }),
+    mutationFn: (cmd: string) => axios.post(`${API_BASE_URL}/command`, { command: cmd }),
   });
 
   const currentDirectory = useMemo(() => {
