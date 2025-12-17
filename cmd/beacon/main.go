@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	config "redbull"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -27,6 +28,7 @@ var COMMAND_MAP = map[string]func(cmd string) (string, string, error){
 	"cd":     changeDirectory,
 	"ls":     listDirectory,
 	"status": getBeaconStatus,
+	"sleep":  setSleepTime,
 }
 
 func init() {
@@ -45,6 +47,17 @@ func getCwd(_ string) (string, string, error) {
 
 func getBeaconStatus(_ string) (string, string, error) {
 	return fmt.Sprintf("Upstream: %s\nProxy: %s\nUsing KRB: %t\nSleep Time: %s", config.UPSTREAM, config.PROXY_URL, config.USE_KRB, SLEEP_TIME), "", nil
+}
+
+func setSleepTime(sleepTime string) (string, string, error) {
+	// Check if the cmd can be turned into a string.
+	sleepTimeInt, err := strconv.Atoi(sleepTime)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to convert sleep time to int: %w", err)
+	}
+
+	SLEEP_TIME = time.Duration(sleepTimeInt) * time.Second
+	return fmt.Sprintf("set sleep time to %s", SLEEP_TIME), "", nil
 }
 
 func changeDirectory(command string) (string, string, error) {
