@@ -16,6 +16,7 @@ func (k *KrbCurlHttpClient) Get(url string) (*http.Response, error) {
 	args := []string{
 		"--proxy-negotiate", "-u", ":",
 		"-L", "-s",
+		"-H", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
 	}
 	if k.ProxyURL != "" {
 		args = append(args, "-x", k.ProxyURL)
@@ -44,6 +45,7 @@ func (k *KrbCurlHttpClient) Post(url string, contentType string, body io.Reader)
 		"--proxy-negotiate", "-u", ":",
 		"-L", "-s",
 		"-X", "POST",
+		"-H", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
 		"-H", fmt.Sprintf("Content-Type: %s", contentType),
 		"-d", string(bodyBytes),
 	}
