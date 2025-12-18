@@ -76,9 +76,8 @@ func checkIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func downloadFile(w http.ResponseWriter, r *http.Request) {
-	// Generate UUID filename for the uploaded file
-	uuidFilename := uuid.New().String()
-	filePath := filepath.Join(uploadStoragePath, uuidFilename)
+	filename := uuid.New().String()
+	filePath := filepath.Join(fileStoragePath, filename)
 	destFile, err := os.Create(filePath)
 	if err != nil {
 		zap.L().Error("downloadFile - create file", zap.Error(err))
@@ -102,7 +101,7 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 	render.Status(r, 200)
 
 	// Return just the UUID filename (not the full path) so it can be used in the upload command
-	render.JSON(w, r, map[string]string{"filename": uuidFilename})
+	render.JSON(w, r, map[string]string{"filename": filename})
 }
 
 func response(w http.ResponseWriter, r *http.Request) {
