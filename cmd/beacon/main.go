@@ -18,6 +18,7 @@ import (
 var SLEEP_TIME = 1 * time.Second
 var CWD = ""
 
+var httpClient rbhttp.HttpClient
 var cmdCtx *rbcmd.Context
 
 func init() {
@@ -26,10 +27,17 @@ func init() {
 		panic(err)
 	}
 
+	if config.USE_KRB {
+		httpClient = rbkrb.NewKrbCurlHttpClient(config.PROXY_URL)
+	} else {
+		httpClient = rbhttp.NewSimpleHttpClient()
+	}
+
 	CWD = cwd
 	cmdCtx = &rbcmd.Context{
-		CWD:       &CWD,
-		SleepTime: &SLEEP_TIME,
+		CWD:        &CWD,
+		HttpClient: httpClient,
+		SleepTime:  &SLEEP_TIME,
 	}
 }
 
@@ -53,13 +61,6 @@ func parseAndExecuteCommand(command string) (string, string, error) {
 func main() {
 	termSig := make(chan os.Signal, 1)
 	signal.Notify(termSig, syscall.SIGINT, syscall.SIGTERM)
-
-	var httpClient rbhttp.HttpClient
-	if config.USE_KRB {
-		httpClient = rbkrb.NewKrbCurlHttpClient(config.PROXY_URL)
-	} else {
-		httpClient = rbhttp.NewSimpleHttpClient()
-	}
 
 	for {
 		select {

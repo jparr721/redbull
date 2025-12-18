@@ -156,6 +156,55 @@ func fetchFiles(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, fileInfos)
 }
 
+func downloadFileFromServer(w http.ResponseWriter, r *http.Request) {
+	filename := chi.URLParam(r, "filename")
+	if filename == "" {
+		errorResponse(w, r, 400, "filename is required")
+		return
+	}
+
+	// Prevent directory traversal attacks
+	if filepath.Base(filename) != filename {
+		errorResponse(w, r, 400, "invalid filename")
+		return
+	}
+
+	filePath := filepath.Join(fileStoragePath, filename)
+
+	// Check if file exists
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			errorResponse(w, r, 404, "file not found")
+			return
+		}
+		zap.L().Error("downloadFileFromServer - stat file", zap.Error(err))
+		errorResponse(w, r, 500, fmt.Sprintf("failed to access file: %v", err))
+		return
+	}
+
+	// Open the file
+	file, err := os.Open(filePath)
+	if err != nil {
+		zap.L().Error("downloadFileFromServer - open file", zap.Error(err))
+		errorResponse(w, r, 500, fmt.Sprintf("failed to open file: %v", err))
+		return
+	}
+	defer file.Close()
+
+	// Set headers for file download
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+
+	// Stream the file to the response
+	_, err = io.Copy(w, file)
+	if err != nil {
+		zap.L().Error("downloadFileFromServer - copy file", zap.Error(err))
+		return
+	}
+}
+
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -182,6 +231,7 @@ func main() {
 	r.Get("/last_checkin", getLastCheckin)
 	r.Post("/download", downloadFile)
 	r.Get("/files", fetchFiles)
+	r.Get("/files/{filename}", downloadFileFromServer)
 
 	zap.L().Info("Server running", zap.Int("port", config.PORT_NUMBER))
 	http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.PORT_NUMBER), r)

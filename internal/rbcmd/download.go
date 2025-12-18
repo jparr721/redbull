@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	config "redbull"
@@ -41,7 +40,7 @@ func (c *DownloadCommand) Execute(ctx *Context, cmd string) (string, string, err
 
 	// Upload them to the server
 	downloadUrl := fmt.Sprintf("%s/download", config.UPSTREAM)
-	downloadResponse, err := http.Post(downloadUrl, "application/octet-stream", bytes.NewBuffer(contents))
+	downloadResponse, err := ctx.HttpClient.Post(downloadUrl, "application/octet-stream", bytes.NewBuffer(contents))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to download file: %w", err)
 	}
