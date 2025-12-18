@@ -3,3 +3,5 @@ package config
 var UPSTREAM = "http://localhost:8000"
 var PROXY_URL = "http://PROXY_HERE:8080"
 var USE_KRB = true
+var PORT_NUMBER = 8000
+var FILE_STORAGE_PATH = "files"

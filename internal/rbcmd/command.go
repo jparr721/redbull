@@ -23,13 +23,14 @@ var registry Registry
 
 func init() {
 	registry = Registry{
-		"shell":  &ShellCommand{},
-		"pwd":    &PwdCommand{},
-		"cd":     &CdCommand{},
-		"ls":     &LsCommand{},
-		"status": &StatusCommand{},
-		"sleep":  &SleepCommand{},
-		"help":   &HelpCommand{},
+		"shell":    &ShellCommand{},
+		"pwd":      &PwdCommand{},
+		"cd":       &CdCommand{},
+		"ls":       &LsCommand{},
+		"status":   &StatusCommand{},
+		"sleep":    &SleepCommand{},
+		"help":     &HelpCommand{},
+		"download": &DownloadCommand{},
 	}
 }
 

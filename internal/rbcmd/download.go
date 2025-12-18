@@ -1,0 +1,51 @@
+package rbcmd
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	config "redbull"
+)
+
+type DownloadCommand struct{}
+
+func (c *DownloadCommand) Help() string {
+	return "Download a file from this computer: download <file>"
+}
+
+func (c *DownloadCommand) Execute(ctx *Context, cmd string) (string, string, error) {
+	// Join the current directory with the command path
+	filePath := filepath.Join(*ctx.CWD, cmd)
+
+	// Resolve to absolute path (handles relative paths like ../..)
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to resolve path '%s': %w", filePath, err)
+	}
+
+	// Open the file using the full path
+	file, err := os.Open(absPath)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Then, read the file contents
+	contents, err := io.ReadAll(file)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// Upload them to the server
+	uploadUrl := fmt.Sprintf("%s/upload", config.UPSTREAM)
+	uploadResponse, err := http.Post(uploadUrl, "application/octet-stream", bytes.NewBuffer(contents))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to upload file: %w", err)
+	}
+	defer uploadResponse.Body.Close()
+
+	return fmt.Sprintf("downloaded file %s", absPath), "", nil
+}
