@@ -91,6 +91,8 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	responses.Append(*rbhttp.NewBeaconResponse("saved file to disk", fmt.Sprintf("saved file to disk: %s", filePath), "", fileStoragePath))
+
 	render.Status(r, 200)
 	render.JSON(w, r, rbhttp.NewCommandResponse{Success: true})
 }
