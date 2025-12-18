@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Activity, Home } from "lucide-react"
+import { Activity, File, Home } from "lucide-react"
+import Link from "next/link"
 
 import {
   Sidebar,
@@ -28,10 +29,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/">
+                  <Link href="/">
                     <Home className="h-4 w-4" />
                     <span>Home</span>
-                  </a>
+                  </Link>
+                </SidebarMenuButton>
+                <SidebarMenuButton asChild>
+                  <Link href="/files">
+                    <File className="h-4 w-4" />
+                    <span>Files</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

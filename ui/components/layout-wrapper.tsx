@@ -1,16 +1,75 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList } from "./ui/breadcrumb";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "./ui/breadcrumb";
 import { Separator } from "./ui/separator";
 
 interface Props {
   children: ReactNode;
 }
 
+function formatSegment(segment: string): string {
+  return segment
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function LayoutWrapper({ children }: Props) {
+  const pathname = usePathname();
+
+  const breadcrumbs = useMemo(() => {
+    const segments = pathname.split("/").filter(Boolean);
+
+    if (segments.length === 0) {
+      return [
+        <BreadcrumbItem key="home" className="hidden md:block">
+          <BreadcrumbPage>Home</BreadcrumbPage>
+        </BreadcrumbItem>,
+      ];
+    }
+
+    const items = [
+      <BreadcrumbItem key="home" className="hidden md:block">
+        <BreadcrumbLink asChild>
+          <Link href="/">Home</Link>
+        </BreadcrumbLink>
+      </BreadcrumbItem>,
+    ];
+
+    segments.forEach((segment, index) => {
+      const isLast = index === segments.length - 1;
+      const href = "/" + segments.slice(0, index + 1).join("/");
+      const displayName = formatSegment(segment);
+
+      items.push(
+        <BreadcrumbSeparator key={`separator-${index}`} />
+      );
+
+      if (isLast) {
+        items.push(
+          <BreadcrumbItem key={segment} className="hidden md:block">
+            <BreadcrumbPage>{displayName}</BreadcrumbPage>
+          </BreadcrumbItem>
+        );
+      } else {
+        items.push(
+          <BreadcrumbItem key={segment} className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link href={href}>{displayName}</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+        );
+      }
+    });
+
+    return items;
+  }, [pathname]);
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -23,11 +82,7 @@ export function LayoutWrapper({ children }: Props) {
           />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Home
-                </BreadcrumbLink>
-              </BreadcrumbItem>
+              {breadcrumbs}
             </BreadcrumbList>
           </Breadcrumb>
         </header>

@@ -40,12 +40,12 @@ func (c *DownloadCommand) Execute(ctx *Context, cmd string) (string, string, err
 	}
 
 	// Upload them to the server
-	uploadUrl := fmt.Sprintf("%s/upload", config.UPSTREAM)
-	uploadResponse, err := http.Post(uploadUrl, "application/octet-stream", bytes.NewBuffer(contents))
+	downloadUrl := fmt.Sprintf("%s/download", config.UPSTREAM)
+	downloadResponse, err := http.Post(downloadUrl, "application/octet-stream", bytes.NewBuffer(contents))
 	if err != nil {
-		return "", "", fmt.Errorf("failed to upload file: %w", err)
+		return "", "", fmt.Errorf("failed to download file: %w", err)
 	}
-	defer uploadResponse.Body.Close()
+	defer downloadResponse.Body.Close()
 
 	return fmt.Sprintf("downloaded file %s", absPath), "", nil
 }

