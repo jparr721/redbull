@@ -13,12 +13,15 @@ import {
   ChevronDownIcon,
   CircleIcon,
   ClockIcon,
+  CopyIcon,
   WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
 import { CodeBlock } from "./code-block";
+import { Button } from "../ui/button";
+import { toast } from "sonner";
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 

@@ -15,6 +15,9 @@ import {
   ToolHeader,
   ToolOutput,
 } from "@/components/ai-elements/tool";
+import { CommandIcon, CopyIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function Responses() {
   const [command, setCommand] = useState("");
@@ -134,6 +137,32 @@ export function Responses() {
                       })}
                     </span>
                   </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    navigator.clipboard.writeText(response.command);
+                    toast.success("Copied to clipboard");
+                  }}>
+                    <CommandIcon className="size-4 text-muted-foreground" />
+                  </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Copy command to clipboard</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => {
+                        navigator.clipboard.writeText(response.stdout);
+                        toast.success("Copied to clipboard");
+                      }}>
+                      <CopyIcon className="size-4 text-muted-foreground" />
+                  </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Copy command output to clipboard</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </ToolContent>
             </Tool>
