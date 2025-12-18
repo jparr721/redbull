@@ -33,6 +33,7 @@ func init() {
 		"sleep":    &SleepCommand{},
 		"help":     &HelpCommand{},
 		"download": &DownloadCommand{},
+		"upload":   &UploadCommand{},
 	}
 }
 

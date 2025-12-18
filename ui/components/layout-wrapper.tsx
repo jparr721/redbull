@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "./ui/breadcrumb";
 import { Separator } from "./ui/separator";
+import { Toaster } from "./ui/sonner";
 
 interface Props {
   children: ReactNode;
@@ -92,6 +93,7 @@ export function LayoutWrapper({ children }: Props) {
           </div>
         </div>
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   );
 }

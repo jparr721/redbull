@@ -12,7 +12,7 @@ import (
 type DownloadCommand struct{}
 
 func (c *DownloadCommand) Help() string {
-	return "Download a file from this computer: download <file>"
+	return "Download a file from this computer: download <filename>"
 }
 
 func (c *DownloadCommand) Execute(ctx *Context, cmd string) (string, string, error) {

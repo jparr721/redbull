@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { getLastCheckInTime, getResponses } from "@/queries/responses.query";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import axios from "axios";
 import { StickToBottom } from "use-stick-to-bottom";
 import { API_BASE_URL } from "@/lib/api-config";
@@ -16,6 +18,7 @@ import {
 
 export function Responses() {
   const [command, setCommand] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: responses, isLoading } = useQuery({
     queryKey: ["responses"],
@@ -33,19 +36,68 @@ export function Responses() {
     mutationFn: (cmd: string) => axios.post(`${API_BASE_URL}/command`, { command: cmd }),
   });
 
+  const uploadFileMutation = useMutation({
+    mutationFn: async ({ file, filename }: { file: File; filename: string }) => {
+      // First, upload the file to the server
+      const { data }  = await axios.post<{filename: string}>(`${API_BASE_URL}/download`, file, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+      });
+
+      // Then send the upload command to the beacon
+      return axios.post(`${API_BASE_URL}/command`, { command: `upload ${data.filename} ${filename}` });
+    },
+  });
+
   const currentDirectory = useMemo(() => {
     return responses?.at(responses.length - 1)?.currentDirectory ?? "";
   }, [responses]);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Upload file to server with original filename
+      await uploadFileMutation.mutateAsync({ file, filename: file.name });
+      toast.success(`File "${file.name}" uploaded successfully`);
+      setCommand("");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error(`Failed to upload file: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!command.trim()) return;
-    mutation.mutate(command);
+    const trimmedCommand = command.trim();
+    if (!trimmedCommand) return;
+
+    if (trimmedCommand.toLowerCase().startsWith("upload")) {
+      fileInputRef.current?.click();
+      return;
+    }
+
+    mutation.mutate(trimmedCommand);
     setCommand("");
   };
 
 
-  if (isLoading) return <h1>Loading</h1>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full relative">
@@ -110,6 +162,12 @@ export function Responses() {
           </div>
         )}
         <form onSubmit={handleSubmit}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
           <Input
             value={command}
             onChange={(e) => setCommand(e.target.value)}

